@@ -26,6 +26,16 @@ DISCORD_WEBHOOK_URL=... yarn start
 docker build -t your-registry/ffxiv-party-join-notifier:latest .
 ```
 
+## GitHub Actions (GHCR)
+
+`main` への push で `ghcr.io/<owner>/<repo>` に Docker image を build & push します（`v*` tag push でも push）。
+
+例:
+
+- `ghcr.io/piyoraik/ffxiv_join_party_member:main`
+- `ghcr.io/piyoraik/ffxiv_join_party_member:sha-<short>`
+- `ghcr.io/piyoraik/ffxiv_join_party_member:v1.2.3`
+
 ## Deploy to k8s
 
 1. `k8s/secret-discord-webhook.yaml` の `REPLACE_ME` を置換して apply
