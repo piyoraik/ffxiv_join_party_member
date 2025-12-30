@@ -38,6 +38,32 @@ export function parseTopCharacterUrlFromSearchHtml(html: string): string | undef
   return new URL(href, LODESTONE_BASE_URL).toString();
 }
 
+export type LodestoneCharacterIdentity = {
+  name: string;
+  world: string;
+};
+
+export function parseCharacterIdentityFromCharacterHtml(html: string): LodestoneCharacterIdentity | undefined {
+  const $ = cheerio.load(html);
+
+  const name =
+    $("p.frame__chara__name").first().text().trim() ||
+    $("span[itemprop='name']").first().text().trim();
+
+  // Example: "Unicorn [Meteor]" => "Unicorn"
+  const worldRaw = $("p.frame__chara__world").first().text().trim();
+  const world = worldRaw ? worldRaw.split("[")[0]?.trim() ?? "" : "";
+
+  if (name && world) return { name, world };
+
+  // Fallback: <title>Piyo Lambda | FINAL FANTASY XIV, The Lodestone</title>
+  const title = $("title").first().text().trim();
+  const titleName = title.split("|")[0]?.trim() ?? "";
+  if (titleName && world) return { name: titleName, world };
+
+  return undefined;
+}
+
 async function fetchText(url: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -66,3 +92,7 @@ export async function fetchTopCharacterUrl(searchUrl: string): Promise<string | 
   return parseTopCharacterUrlFromSearchHtml(html);
 }
 
+export async function fetchCharacterIdentity(characterUrl: string): Promise<LodestoneCharacterIdentity | undefined> {
+  const html = await fetchText(characterUrl, 30_000);
+  return parseCharacterIdentityFromCharacterHtml(html);
+}

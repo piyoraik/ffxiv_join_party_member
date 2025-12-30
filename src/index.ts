@@ -2,7 +2,7 @@ import { loadEnv } from "./env.js";
 import { postDiscordWebhook, sleep, toDiscordCodeBlock } from "./discord.js";
 import { queryRange } from "./loki.js";
 import { parsePartyJoinEvent, type PartyJoinEvent } from "./parser.js";
-import { buildLodestoneSearchUrl, fetchTopCharacterUrl } from "./lodestone.js";
+import { buildLodestoneSearchUrl, fetchCharacterIdentity, fetchTopCharacterUrl } from "./lodestone.js";
 import {
   buildAchievementCategoryUrl,
   fetchAchievementCategoryHtml,
@@ -36,6 +36,21 @@ async function enrichWithLodestone(event: PartyJoinEvent): Promise<JoinPartyEnri
   }
 
   if (!characterUrl) return { event, lodestoneSearchUrl: searchUrl };
+
+  // 参加者と同姓同名（かつ同ワールド）のキャラページであることを確認できた場合のみ、Lodestone 情報を出力します。
+  try {
+    const identity = await fetchCharacterIdentity(characterUrl);
+    const expectedName = name.trim();
+    const expectedWorld = event.worldName.trim();
+    const matched =
+      identity &&
+      identity.name.trim() === expectedName &&
+      identity.world.trim().toLowerCase() === expectedWorld.toLowerCase();
+    if (!matched) return { event };
+  } catch {
+    // 取得できない場合は誤検出防止のため Lodestone 情報を出さない
+    return { event };
+  }
 
   const achievementUrl = buildAchievementCategoryUrl(characterUrl);
   if (!achievementUrl) return { event, lodestoneSearchUrl: searchUrl, lodestoneCharacterUrl: characterUrl };
