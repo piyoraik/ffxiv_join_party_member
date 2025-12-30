@@ -1,0 +1,13 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "ffxiv-pt-join"
+resolve_s3 = true
+s3_prefix = "ffxiv-pt-join"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DefaultWorldName=\"Unicorn\" EnableLodestone=\"true\""
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-northeast-1"

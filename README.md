@@ -1,6 +1,8 @@
 # ffxiv_join_party_member
 
-Kubernetes 上の Loki を `query_range` で検索し、「がパーティに参加しました」を検出して Discord webhook へ送信する CronJob です。
+FFXIV のログ（ACTなど）から「がパーティに参加しました」を検出し、Discord webhook へ送信します。
+
+現在の想定構成は「Fluentd（Windowsでtail）→ Lambda（SAMでデプロイ）→ Discord」です。
 
 キャラクター名は `苗字 名前ワールド名` の想定で、`名前` と `ワールド名` は `CocoTitan => Coco + Titan` のように「小文字→大文字」の境界で分割します（分割できない場合はそのまま送ります）。
 
@@ -8,15 +10,11 @@ Discord への通知は `ffxiv_ptfinder` と同様にコードブロック形式
 
 ## Env
 
-- `DISCORD_WEBHOOK_URL` (required): Discord の webhook URL（k8s Secret 推奨）
-- `LOKI_BASE_URL` (optional): default `http://loki.monitoring.svc.cluster.local:3100`
-- `LOOKBACK_SECONDS` (optional): default `70`
-- `LOKI_QUERY` (optional): default は要件の固定クエリ
+- `DISCORD_WEBHOOK_URL` (required): Discord の webhook URL
 - `ENABLE_LODESTONE` (optional): default `true`（Lodestone 取得を無効化する場合は `false`）
 - `DEFAULT_WORLD_NAME` (optional): ログにワールド名が含まれない場合の補完（ログ提供者と同一ワールドのケース）
-- `DISCORD_USERNAME` / `DISCORD_AVATAR_URL` (optional): webhook の表示調整
 
-## Local run
+## Local run（開発用）
 
 ```sh
 yarn install
@@ -24,28 +22,28 @@ yarn build
 DISCORD_WEBHOOK_URL=... yarn start
 ```
 
-## Build image
+## Fluentd -> Lambda (SAM)
+
+このリポジトリには、Fluentd から「パーティ参加」ログのみを受けて Discord に通知する Lambda（Function URL）を同梱しています。
+
+### Deploy
+
+`template.yaml` を使ってデプロイします（例）。
 
 ```sh
-docker build -t your-registry/ffxiv-party-join-notifier:latest .
+sam build
+sam deploy --guided \
+  --parameter-overrides \
+    DiscordWebhookUrl='https://discord.com/api/webhooks/...' \
+    DefaultWorldName='Unicorn' \
+    EnableLodestone='true'
 ```
 
-## GitHub Actions (GHCR)
+デプロイ後に出力される `FunctionUrl` を Fluentd 側の `{input_lambda_url}` に設定してください。
 
-`main` への push で `ghcr.io/<owner>/<repo>` に Docker image を build & push します（`v*` tag push でも push）。
+### Fluentd config
 
-例:
+`fluent.conf` は Lambda に送るものだけ `grep` で絞ります。
 
-- `ghcr.io/piyoraik/ffxiv_join_party_member:main`
-- `ghcr.io/piyoraik/ffxiv_join_party_member:sha-<short>`
-- `ghcr.io/piyoraik/ffxiv_join_party_member:v1.2.3`
-
-## Deploy to k8s
-
-1. `k8s/secret-discord-webhook.yaml` の `REPLACE_ME` を置換して apply
-2. `k8s/cronjob.yaml` の `image: REPLACE_ME_IMAGE` を置換して apply
-
-```sh
-kubectl apply -f k8s/secret-discord-webhook.yaml
-kubectl apply -f k8s/cronjob.yaml
-```
+補足:
+- Discord への通知内容はコードブロック（```）で送信します

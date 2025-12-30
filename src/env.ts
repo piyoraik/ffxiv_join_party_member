@@ -1,18 +1,9 @@
 export type AppEnv = {
-  lokiBaseUrl: string;
-  query: string;
-  lookbackSeconds: number;
   discordWebhookUrl: string;
-  discordUsername?: string;
-  discordAvatarUrl?: string;
   enableLodestone: boolean;
   defaultWorldName?: string;
 };
 
-const DEFAULT_LOKI_BASE_URL = "http://loki.monitoring.svc.cluster.local:3100";
-const DEFAULT_QUERY =
-  '{content="ffxiv",job="ffxiv-dungeon",instance="DESKTOP-LHEGLIC"} |= "がパーティに参加しました"';
-const DEFAULT_LOOKBACK_SECONDS = 70;
 const DEFAULT_ENABLE_LODESTONE = true;
 
 function requireEnv(name: string): string {
@@ -45,12 +36,7 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
  */
 export function loadEnv(): AppEnv {
   return {
-    lokiBaseUrl: process.env.LOKI_BASE_URL ?? DEFAULT_LOKI_BASE_URL,
-    query: process.env.LOKI_QUERY ?? DEFAULT_QUERY,
-    lookbackSeconds: parsePositiveInt(process.env.LOOKBACK_SECONDS, DEFAULT_LOOKBACK_SECONDS),
     discordWebhookUrl: requireEnv("DISCORD_WEBHOOK_URL"),
-    discordUsername: process.env.DISCORD_USERNAME,
-    discordAvatarUrl: process.env.DISCORD_AVATAR_URL,
     enableLodestone: parseBoolean(process.env.ENABLE_LODESTONE, DEFAULT_ENABLE_LODESTONE),
     // ゲーム仕様: ログ提供者と同一ワールドの場合、ログにワールド名が含まれないことがあるため補完用に使用します。
     defaultWorldName: process.env.DEFAULT_WORLD_NAME?.trim() || undefined

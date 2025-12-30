@@ -17,8 +17,6 @@ export function toDiscordCodeBlock(text: string, maxChars = 1900): string {
 
 type WebhookPayload = {
   content: string;
-  username?: string;
-  avatar_url?: string;
 };
 
 /**
@@ -38,14 +36,8 @@ async function sendWebhook(webhookUrl: string, payload: WebhookPayload): Promise
 export async function postDiscordWebhook(params: {
   webhookUrl: string;
   content: string;
-  username?: string;
-  avatarUrl?: string;
 }): Promise<void> {
-  const payload: WebhookPayload = {
-    content: params.content,
-    username: params.username,
-    avatar_url: params.avatarUrl
-  };
+  const payload: WebhookPayload = { content: params.content };
 
   const response = await sendWebhook(params.webhookUrl, payload);
   if (response.ok) return;

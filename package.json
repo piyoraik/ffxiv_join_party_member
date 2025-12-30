@@ -9,8 +9,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js",
-    "dev": "node --watch --loader ts-node/esm src/index.ts",
+    "start": "node dist/local.js",
+    "dev": "node --watch --loader ts-node/esm src/local.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -1,5 +1,4 @@
 import type { AppEnv } from "./env.js";
-import type { LokiLogEntry } from "./loki.js";
 import type { PartyJoinEvent } from "./parser.js";
 import type { JoinPartyEnriched } from "./joinPartyText.js";
 import { sleep } from "./discord.js";
@@ -14,12 +13,10 @@ function buildEventKey(event: PartyJoinEvent): string {
 }
 
 /**
- * Loki のログエントリ一覧から「パーティ参加」イベントだけを抽出します。
+ * ログ文字列一覧から「パーティ参加」イベントだけを抽出します。
  */
-export function extractJoinPartyEvents(entries: LokiLogEntry[]): PartyJoinEvent[] {
-  return entries
-    .map((e) => parsePartyJoinEvent(e.line))
-    .filter((e): e is NonNullable<typeof e> => Boolean(e));
+export function extractJoinPartyEventsFromLines(lines: string[]): PartyJoinEvent[] {
+  return lines.map((line) => parsePartyJoinEvent(line)).filter((e): e is NonNullable<typeof e> => Boolean(e));
 }
 
 /**
@@ -35,6 +32,18 @@ export function fillMissingWorldName(defaultWorldName: string | undefined, event
   if (event.worldName) return event;
   if (!event.familyName || !event.givenName) return event;
   return { ...event, worldName: defaultWorldName };
+}
+
+/**
+ * ログ行一覧から参加イベントを抽出し、ワールド名補完と重複排除まで行います。
+ */
+export function buildJoinPartyTargets(params: {
+  defaultWorldName?: string;
+  lines: string[];
+}): PartyJoinEvent[] {
+  const extracted = extractJoinPartyEventsFromLines(params.lines);
+  const normalized = extracted.map((event) => fillMissingWorldName(params.defaultWorldName, event));
+  return dedupeJoinPartyEvents(normalized);
 }
 
 /**

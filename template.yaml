@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: ffxiv_join_party_member - Fluentd -> Lambda -> Discord
+
+Parameters:
+  DiscordWebhookUrl:
+    Type: String
+    NoEcho: true
+  DefaultWorldName:
+    Type: String
+    Default: ""
+  EnableLodestone:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+Resources:
+  JoinPartyNotifierFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs20.x
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 30
+      Handler: handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DISCORD_WEBHOOK_URL: !Ref DiscordWebhookUrl
+          DEFAULT_WORLD_NAME: !Ref DefaultWorldName
+          ENABLE_LODESTONE: !Ref EnableLodestone
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins: ["*"]
+          AllowHeaders: ["content-type"]
+          AllowMethods: ["POST"]
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/lambda/handler.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2022
+        Format: cjs
+
+Outputs:
+  FunctionUrl:
+    Description: "Fluentd output endpoint (Lambda Function URL)"
+    Value: !GetAtt JoinPartyNotifierFunctionUrl.FunctionUrl
