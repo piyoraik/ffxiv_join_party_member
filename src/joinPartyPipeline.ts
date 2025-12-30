@@ -23,6 +23,21 @@ export function extractJoinPartyEvents(entries: LokiLogEntry[]): PartyJoinEvent[
 }
 
 /**
+ * ゲーム仕様による「ワールド名省略」を補完します。
+ *
+ * ログ提供者と参加者が同一ワールドの場合、ログにワールド名が含まれず
+ * `Azu Scalaがパーティに参加しました。` のように 2語で終わることがあります。
+ *
+ * その場合、`DEFAULT_WORLD_NAME` で指定されたワールド名を代入します。
+ */
+export function fillMissingWorldName(defaultWorldName: string | undefined, event: PartyJoinEvent): PartyJoinEvent {
+  if (!defaultWorldName) return event;
+  if (event.worldName) return event;
+  if (!event.familyName || !event.givenName) return event;
+  return { ...event, worldName: defaultWorldName };
+}
+
+/**
  * 同一キャラクターの複数行（同一検索範囲内）をまとめて重複排除します。
  *
  * - 重複対策は「同一キャラを何度も並べない」目的のみ
@@ -41,16 +56,16 @@ export function dedupeJoinPartyEvents(events: PartyJoinEvent[]): PartyJoinEvent[
  * 参加イベントを Lodestone 情報で拡張します（必要な場合のみ）。
  */
 export async function enrichJoinPartyEvents(
-  env: Pick<AppEnv, "enableLodestone">,
+  env: Pick<AppEnv, "enableLodestone" | "defaultWorldName">,
   events: PartyJoinEvent[]
 ): Promise<JoinPartyEnriched[]> {
-  if (!env.enableLodestone) return events.map((event) => ({ event }));
+  const normalized = events.map((event) => fillMissingWorldName(env.defaultWorldName, event));
+  if (!env.enableLodestone) return normalized.map((event) => ({ event }));
 
   const enriched: JoinPartyEnriched[] = [];
-  for (const event of events) {
+  for (const event of normalized) {
     enriched.push(await enrichJoinPartyEventWithLodestone(event));
     await sleep(250);
   }
   return enriched;
 }
-

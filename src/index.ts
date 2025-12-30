@@ -2,7 +2,12 @@ import { loadEnv } from "./env.js";
 import { postDiscordWebhook, toDiscordCodeBlock } from "./discord.js";
 import { queryRange } from "./loki.js";
 import { formatJoinPartyEventsText } from "./joinPartyText.js";
-import { dedupeJoinPartyEvents, enrichJoinPartyEvents, extractJoinPartyEvents } from "./joinPartyPipeline.js";
+import {
+  dedupeJoinPartyEvents,
+  enrichJoinPartyEvents,
+  extractJoinPartyEvents,
+  fillMissingWorldName
+} from "./joinPartyPipeline.js";
 import { minusSecondsNs, nowNs } from "./time.js";
 
 /**
@@ -34,7 +39,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const targets = dedupeJoinPartyEvents(events);
+  const normalized = events.map((e) => fillMissingWorldName(env.defaultWorldName, e));
+  const targets = dedupeJoinPartyEvents(normalized);
   const enriched = await enrichJoinPartyEvents(env, targets);
 
   const text = formatJoinPartyEventsText(enriched);

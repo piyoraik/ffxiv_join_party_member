@@ -13,6 +13,7 @@ Discord への通知は `ffxiv_ptfinder` と同様にコードブロック形式
 - `LOOKBACK_SECONDS` (optional): default `70`
 - `LOKI_QUERY` (optional): default は要件の固定クエリ
 - `ENABLE_LODESTONE` (optional): default `true`（Lodestone 取得を無効化する場合は `false`）
+- `DEFAULT_WORLD_NAME` (optional): ログにワールド名が含まれない場合の補完（ログ提供者と同一ワールドのケース）
 - `DISCORD_USERNAME` / `DISCORD_AVATAR_URL` (optional): webhook の表示調整
 
 ## Local run

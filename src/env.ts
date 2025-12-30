@@ -6,6 +6,7 @@ export type AppEnv = {
   discordUsername?: string;
   discordAvatarUrl?: string;
   enableLodestone: boolean;
+  defaultWorldName?: string;
 };
 
 const DEFAULT_LOKI_BASE_URL = "http://loki.monitoring.svc.cluster.local:3100";
@@ -50,6 +51,8 @@ export function loadEnv(): AppEnv {
     discordWebhookUrl: requireEnv("DISCORD_WEBHOOK_URL"),
     discordUsername: process.env.DISCORD_USERNAME,
     discordAvatarUrl: process.env.DISCORD_AVATAR_URL,
-    enableLodestone: parseBoolean(process.env.ENABLE_LODESTONE, DEFAULT_ENABLE_LODESTONE)
+    enableLodestone: parseBoolean(process.env.ENABLE_LODESTONE, DEFAULT_ENABLE_LODESTONE),
+    // ゲーム仕様: ログ提供者と同一ワールドの場合、ログにワールド名が含まれないことがあるため補完用に使用します。
+    defaultWorldName: process.env.DEFAULT_WORLD_NAME?.trim() || undefined
   };
 }
