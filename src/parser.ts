@@ -14,7 +14,7 @@ function extractInnerLine(logLine: string): string {
 }
 
 function splitGivenWorld(givenWorld: string): { given: string; world?: string } {
-  // Boundary: lower -> Upper (e.g. CocoTitan => Coco + Titan)
+  // 境界: 小文字→大文字（例: CocoTitan => Coco + Titan）
   for (let i = 1; i < givenWorld.length; i++) {
     const prev = givenWorld[i - 1] ?? "";
     const curr = givenWorld[i] ?? "";
@@ -25,6 +25,15 @@ function splitGivenWorld(givenWorld: string): { given: string; world?: string } 
   return { given: givenWorld };
 }
 
+/**
+ * Lokiログ1行から「パーティ参加」イベントを抽出します。
+ *
+ * 期待するログの例:
+ * `...||Rikka CocoTitanがパーティに参加しました。|...`
+ *
+ * キャラクター名は `苗字 名前ワールド名` を想定し、`CocoTitan` のようなケースは
+ * 「小文字→大文字」の境界で `名前` と `ワールド名` を分割します。
+ */
 export function parsePartyJoinEvent(logLine: string): PartyJoinEvent | null {
   const line = extractInnerLine(logLine);
   if (!line.includes(JOIN_MARKER)) return null;
@@ -50,4 +59,3 @@ export function parsePartyJoinEvent(logLine: string): PartyJoinEvent | null {
   const { given, world } = splitGivenWorld(givenWorld);
   return { rawLine: line, characterRaw, familyName, givenName: given, worldName: world };
 }
-

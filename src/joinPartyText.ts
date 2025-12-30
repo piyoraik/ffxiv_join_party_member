@@ -11,6 +11,9 @@ export type JoinPartyEnriched = {
   savageClearsShort?: string[];
 };
 
+/**
+ * 高難度（絶/零式）の達成状況を表示用文字列に整形します。
+ */
 function formatHighEndClears(
   enriched: JoinPartyEnriched,
   group: "ultimate" | "savage"
@@ -26,6 +29,9 @@ function formatHighEndClears(
   return clears.join(" / ");
 }
 
+/**
+ * 参加者の表示名を `Name @ World` 形式で返します。
+ */
 function formatActor(event: PartyJoinEvent): string {
   if (event.familyName && event.givenName && event.worldName) {
     return `${event.familyName} ${event.givenName} @ ${event.worldName}`;
@@ -33,6 +39,9 @@ function formatActor(event: PartyJoinEvent): string {
   return event.characterRaw;
 }
 
+/**
+ * 1件の参加イベントを `ffxiv_ptfinder` 風のテキストブロックとして整形します。
+ */
 export function formatJoinPartyEventText(enriched: JoinPartyEnriched): string {
   const url = enriched.lodestoneCharacterUrl ?? enriched.lodestoneSearchUrl ?? "";
   return [
@@ -43,7 +52,9 @@ export function formatJoinPartyEventText(enriched: JoinPartyEnriched): string {
   ].join("\n");
 }
 
+/**
+ * 複数参加イベントを空行区切りで整形します。
+ */
 export function formatJoinPartyEventsText(enriched: JoinPartyEnriched[]): string {
   return enriched.map((e) => formatJoinPartyEventText(e)).join("\n\n");
 }
-

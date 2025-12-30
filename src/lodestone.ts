@@ -1,12 +1,24 @@
 import * as cheerio from "cheerio";
+import { fetchText } from "./http.js";
 
 const LODESTONE_BASE_URL = "https://jp.finalfantasyxiv.com";
+const LODESTONE_HEADERS: Record<string, string> = {
+  Accept: "text/html,application/xhtml+xml",
+  "Accept-Language": "ja,en;q=0.8",
+  "User-Agent": "ffxiv_join_party_member/1.0 (+https://jp.finalfantasyxiv.com)"
+};
 
 export type LodestoneCreatorInfo = {
   name: string;
   world: string;
 };
 
+/**
+ * Lodestone のキャラクター検索URLを生成します。
+ *
+ * 例:
+ * `https://jp.finalfantasyxiv.com/lodestone/character/?q=Noah+Stella&worldname=Asura&...`
+ */
 export function buildLodestoneSearchUrl(info: LodestoneCreatorInfo): string {
   const url = new URL("/lodestone/character/", LODESTONE_BASE_URL);
   const params = url.searchParams;
@@ -31,6 +43,9 @@ export function buildLodestoneSearchUrl(info: LodestoneCreatorInfo): string {
   return url.toString();
 }
 
+/**
+ * キャラクター検索結果HTMLから、先頭に表示されるキャラクターURLを取得します。
+ */
 export function parseTopCharacterUrlFromSearchHtml(html: string): string | undefined {
   const $ = cheerio.load(html);
   const href = $("a.entry__link").first().attr("href");
@@ -43,6 +58,13 @@ export type LodestoneCharacterIdentity = {
   world: string;
 };
 
+/**
+ * キャラクターページHTMLから「キャラクター名/ワールド名」を抽出します。
+ *
+ * `character.html` の例では以下から取れます:
+ * - 名前: `p.frame__chara__name` / `span[itemprop="name"]`
+ * - ワールド: `p.frame__chara__world`（例: `Unicorn [Meteor]` → `Unicorn`）
+ */
 export function parseCharacterIdentityFromCharacterHtml(html: string): LodestoneCharacterIdentity | undefined {
   const $ = cheerio.load(html);
 
@@ -56,7 +78,7 @@ export function parseCharacterIdentityFromCharacterHtml(html: string): Lodestone
 
   if (name && world) return { name, world };
 
-  // Fallback: <title>Piyo Lambda | FINAL FANTASY XIV, The Lodestone</title>
+  // フォールバック: <title>Piyo Lambda | FINAL FANTASY XIV, The Lodestone</title>
   const title = $("title").first().text().trim();
   const titleName = title.split("|")[0]?.trim() ?? "";
   if (titleName && world) return { name: titleName, world };
@@ -64,35 +86,18 @@ export function parseCharacterIdentityFromCharacterHtml(html: string): Lodestone
   return undefined;
 }
 
-async function fetchText(url: string, timeoutMs: number): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "ja,en;q=0.8",
-        "User-Agent": "ffxiv_join_party_member/1.0 (+https://jp.finalfantasyxiv.com)"
-      },
-      signal: controller.signal
-    });
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      throw new Error(`HTTP ${response.status} ${response.statusText}${body ? `: ${body}` : ""}`);
-    }
-    return await response.text();
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
+/**
+ * Lodestone のキャラクター検索を行い、先頭にヒットしたキャラクターURLを返します。
+ */
 export async function fetchTopCharacterUrl(searchUrl: string): Promise<string | undefined> {
-  const html = await fetchText(searchUrl, 30_000);
+  const html = await fetchText(searchUrl, { timeoutMs: 30_000, headers: LODESTONE_HEADERS });
   return parseTopCharacterUrlFromSearchHtml(html);
 }
 
+/**
+ * Lodestone のキャラクターページを取得し、identity（名前/ワールド）を返します。
+ */
 export async function fetchCharacterIdentity(characterUrl: string): Promise<LodestoneCharacterIdentity | undefined> {
-  const html = await fetchText(characterUrl, 30_000);
+  const html = await fetchText(characterUrl, { timeoutMs: 30_000, headers: LODESTONE_HEADERS });
   return parseCharacterIdentityFromCharacterHtml(html);
 }

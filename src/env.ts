@@ -37,6 +37,11 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
+/**
+ * 環境変数から設定を読み込みます。
+ *
+ * k8s では `Secret/ConfigMap` 経由で注入する想定です。
+ */
 export function loadEnv(): AppEnv {
   return {
     lokiBaseUrl: process.env.LOKI_BASE_URL ?? DEFAULT_LOKI_BASE_URL,

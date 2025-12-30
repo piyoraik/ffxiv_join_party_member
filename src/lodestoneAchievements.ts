@@ -1,7 +1,13 @@
 import * as cheerio from "cheerio";
+import { fetchText } from "./http.js";
 
 const LODESTONE_BASE_URL = "https://jp.finalfantasyxiv.com";
 const ULTIMATE_CATEGORY_ID = 4;
+const LODESTONE_HEADERS: Record<string, string> = {
+  Accept: "text/html,application/xhtml+xml",
+  "Accept-Language": "ja,en;q=0.8",
+  "User-Agent": "ffxiv_join_party_member/1.0 (+https://jp.finalfantasyxiv.com)"
+};
 
 export const HIGH_END_ACHIEVEMENTS = [
   { name: "絶バハムートを狩りし者", short: "絶バハ", group: "ultimate" },
@@ -21,19 +27,31 @@ export const HIGH_END_ACHIEVEMENTS = [
 export type HighEndAchievementName = (typeof HIGH_END_ACHIEVEMENTS)[number]["name"];
 export type HighEndAchievementGroup = (typeof HIGH_END_ACHIEVEMENTS)[number]["group"];
 
+/**
+ * アチーブ正式名 → 表示用略称 のルックアップを返します。
+ */
 export function getHighEndAchievementShortMap(): Map<HighEndAchievementName, string> {
   return new Map(HIGH_END_ACHIEVEMENTS.map((a) => [a.name, a.short]));
 }
 
+/**
+ * アチーブ正式名 → 種別（絶/零式） のルックアップを返します。
+ */
 export function getHighEndAchievementGroupMap(): Map<HighEndAchievementName, HighEndAchievementGroup> {
   return new Map(HIGH_END_ACHIEVEMENTS.map((a) => [a.name, a.group]));
 }
 
+/**
+ * キャラクターURL（例: `https://.../lodestone/character/12345/`）から characterId を抽出します。
+ */
 export function parseCharacterIdFromUrl(characterUrl: string): string | undefined {
   const match = characterUrl.match(/\/lodestone\/character\/(\d+)\//);
   return match?.[1];
 }
 
+/**
+ * Lodestone のアチーブメント一覧URL（カテゴリ指定）を生成します。
+ */
 export function buildAchievementCategoryUrl(characterUrl: string): string | undefined {
   const characterId = parseCharacterIdFromUrl(characterUrl);
   if (!characterId) return undefined;
@@ -48,6 +66,12 @@ export type HighEndAchievementParseResult = {
   clears: HighEndAchievementName[];
 };
 
+/**
+ * アチーブメント一覧HTMLから、指定した高難度（絶/零式）アチーブの達成状況を判定します。
+ *
+ * 判定方法:
+ * - 対象の `<li class="entry">` 内に `time.entry__activity__time` が存在するか（=日付が入る）
+ */
 export function parseHighEndClearsFromAchievementHtml(html: string): HighEndAchievementParseResult {
   const $ = cheerio.load(html);
 
@@ -71,30 +95,9 @@ export function parseHighEndClearsFromAchievementHtml(html: string): HighEndAchi
   };
 }
 
-async function fetchText(url: string, timeoutMs: number): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "ja,en;q=0.8",
-        "User-Agent": "ffxiv_join_party_member/1.0 (+https://jp.finalfantasyxiv.com)"
-      },
-      signal: controller.signal
-    });
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      throw new Error(`HTTP ${response.status} ${response.statusText}${body ? `: ${body}` : ""}`);
-    }
-    return await response.text();
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
+/**
+ * Lodestone のアチーブメント一覧ページHTMLを取得します。
+ */
 export async function fetchAchievementCategoryHtml(url: string): Promise<string> {
-  return await fetchText(url, 30_000);
+  return await fetchText(url, { timeoutMs: 30_000, headers: LODESTONE_HEADERS });
 }
-

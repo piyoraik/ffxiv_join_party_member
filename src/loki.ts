@@ -22,6 +22,12 @@ function asLokiErrorMessage(payload: LokiQueryRangeResponse): string | null {
   return `${payload.error ?? "Loki error"}${type}`;
 }
 
+/**
+ * Loki の `query_range` を呼び出してログを取得します。
+ *
+ * - `startNs/endNs` は nanoseconds を指定します
+ * - 複数streamが返るため、最終的に timestamp でソートして返します
+ */
 export async function queryRange(params: {
   baseUrl: string;
   query: string;
@@ -65,4 +71,3 @@ export async function queryRange(params: {
   entries.sort((a, b) => (a.timestampNs < b.timestampNs ? -1 : a.timestampNs > b.timestampNs ? 1 : 0));
   return entries;
 }
-

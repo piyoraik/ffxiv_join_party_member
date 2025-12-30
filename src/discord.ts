@@ -1,3 +1,6 @@
+/**
+ * 指定ミリ秒だけ待機します。
+ */
 export async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -18,6 +21,9 @@ type WebhookPayload = {
   avatar_url?: string;
 };
 
+/**
+ * Discord webhook にpayloadをPOSTします（ステータス判定は呼び出し側）。
+ */
 async function sendWebhook(webhookUrl: string, payload: WebhookPayload): Promise<Response> {
   return await fetch(webhookUrl, {
     method: "POST",
@@ -50,7 +56,7 @@ export async function postDiscordWebhook(params: {
       const data = (await response.json()) as { retry_after?: number };
       if (typeof data.retry_after === "number") retryAfterMs = Math.ceil(data.retry_after * 1000);
     } catch {
-      // ignore
+      // 無視（JSONが読めない場合はデフォルト値で待機）
     }
     await sleep(retryAfterMs);
 
