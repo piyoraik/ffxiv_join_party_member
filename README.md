@@ -10,6 +10,7 @@ Kubernetes 上の Loki を `query_range` で検索し、「がパーティに参
 - `LOKI_BASE_URL` (optional): default `http://loki.monitoring.svc.cluster.local:3100`
 - `LOOKBACK_SECONDS` (optional): default `70`
 - `LOKI_QUERY` (optional): default は要件の固定クエリ
+- `ENABLE_LODESTONE` (optional): default `true`（Lodestone 取得を無効化する場合は `false`）
 - `DISCORD_USERNAME` / `DISCORD_AVATAR_URL` (optional): webhook の表示調整
 
 ## Local run

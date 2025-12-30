@@ -13,7 +13,9 @@
     "dev": "node --watch --loader ts-node/esm src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "cheerio": "^1.1.2"
+  },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "ts-node": "^10.9.2",

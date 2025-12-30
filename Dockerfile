@@ -9,6 +9,8 @@ RUN yarn build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+RUN corepack enable
+COPY package.json yarn.lock ./
+RUN yarn install --production --frozen-lockfile
 COPY --from=build /app/dist ./dist
-COPY package.json ./
 CMD ["node", "dist/index.js"]

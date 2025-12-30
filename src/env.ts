@@ -5,12 +5,14 @@ export type AppEnv = {
   discordWebhookUrl: string;
   discordUsername?: string;
   discordAvatarUrl?: string;
+  enableLodestone: boolean;
 };
 
 const DEFAULT_LOKI_BASE_URL = "http://loki.monitoring.svc.cluster.local:3100";
 const DEFAULT_QUERY =
   '{content="ffxiv",job="ffxiv-dungeon",instance="DESKTOP-LHEGLIC"} |= "がパーティに参加しました"';
 const DEFAULT_LOOKBACK_SECONDS = 70;
+const DEFAULT_ENABLE_LODESTONE = true;
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -27,6 +29,14 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
+function parseBoolean(value: string | undefined, fallback: boolean): boolean {
+  if (!value) return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
+  return fallback;
+}
+
 export function loadEnv(): AppEnv {
   return {
     lokiBaseUrl: process.env.LOKI_BASE_URL ?? DEFAULT_LOKI_BASE_URL,
@@ -34,7 +44,7 @@ export function loadEnv(): AppEnv {
     lookbackSeconds: parsePositiveInt(process.env.LOOKBACK_SECONDS, DEFAULT_LOOKBACK_SECONDS),
     discordWebhookUrl: requireEnv("DISCORD_WEBHOOK_URL"),
     discordUsername: process.env.DISCORD_USERNAME,
-    discordAvatarUrl: process.env.DISCORD_AVATAR_URL
+    discordAvatarUrl: process.env.DISCORD_AVATAR_URL,
+    enableLodestone: parseBoolean(process.env.ENABLE_LODESTONE, DEFAULT_ENABLE_LODESTONE)
   };
 }
-
