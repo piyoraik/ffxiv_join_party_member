@@ -4,6 +4,8 @@ Kubernetes 上の Loki を `query_range` で検索し、「がパーティに参
 
 キャラクター名は `苗字 名前ワールド名` の想定で、`名前` と `ワールド名` は `CocoTitan => Coco + Titan` のように「小文字→大文字」の境界で分割します（分割できない場合はそのまま送ります）。
 
+Discord への通知は `ffxiv_ptfinder` と同様にコードブロック形式（```）で送信します。
+
 ## Env
 
 - `DISCORD_WEBHOOK_URL` (required): Discord の webhook URL（k8s Secret 推奨）

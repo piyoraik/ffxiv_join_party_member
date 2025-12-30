@@ -1,5 +1,5 @@
 import { loadEnv } from "./env.js";
-import { postDiscordWebhook } from "./discord.js";
+import { postDiscordWebhook, sleep, toDiscordCodeBlock } from "./discord.js";
 import { queryRange } from "./loki.js";
 import { parsePartyJoinEvent, type PartyJoinEvent } from "./parser.js";
 import { buildLodestoneSearchUrl, fetchTopCharacterUrl } from "./lodestone.js";
@@ -10,6 +10,7 @@ import {
   getHighEndAchievementShortMap,
   parseHighEndClearsFromAchievementHtml
 } from "./lodestoneAchievements.js";
+import { formatJoinPartyEventsText, type JoinPartyEnriched } from "./joinPartyText.js";
 
 function nowNs(): string {
   return String(Date.now() * 1_000_000);
@@ -21,29 +22,7 @@ function minusSecondsNs(endNs: string, seconds: number): string {
   return String(start);
 }
 
-function formatEvent(e: PartyJoinEvent): string {
-  if (e.familyName && e.givenName) {
-    const worldSuffix = e.worldName ? ` (${e.worldName})` : "";
-    return `${e.familyName} ${e.givenName}${worldSuffix}`;
-  }
-  return e.characterRaw;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-type LodestoneEnriched = {
-  event: PartyJoinEvent;
-  lodestoneSearchUrl?: string;
-  lodestoneCharacterUrl?: string;
-  achievementUrl?: string;
-  highEndStatus?: "ok" | "private_or_unavailable" | "error";
-  ultimateClearsShort?: string[];
-  savageClearsShort?: string[];
-};
-
-async function enrichWithLodestone(event: PartyJoinEvent): Promise<LodestoneEnriched> {
+async function enrichWithLodestone(event: PartyJoinEvent): Promise<JoinPartyEnriched> {
   if (!event.familyName || !event.givenName || !event.worldName) return { event };
 
   const name = `${event.familyName} ${event.givenName}`;
@@ -80,7 +59,6 @@ async function enrichWithLodestone(event: PartyJoinEvent): Promise<LodestoneEnri
       event,
       lodestoneSearchUrl: searchUrl,
       lodestoneCharacterUrl: characterUrl,
-      achievementUrl,
       highEndStatus: parsed.status,
       ultimateClearsShort: ultimate,
       savageClearsShort: savage
@@ -90,26 +68,9 @@ async function enrichWithLodestone(event: PartyJoinEvent): Promise<LodestoneEnri
       event,
       lodestoneSearchUrl: searchUrl,
       lodestoneCharacterUrl: characterUrl,
-      achievementUrl,
       highEndStatus: "error"
     };
   }
-}
-
-function formatEnriched(e: LodestoneEnriched): string {
-  const base = formatEvent(e.event);
-  const url = e.lodestoneCharacterUrl ?? e.lodestoneSearchUrl;
-  const urlText = url ? ` Lodestone: ${url}` : "";
-
-  if (!e.highEndStatus) return `${base}${urlText}`;
-  if (e.highEndStatus === "private_or_unavailable") return `${base}${urlText} 高難度: 非公開/取得不可`;
-  if (e.highEndStatus === "error") return `${base}${urlText} 高難度: 取得失敗`;
-
-  const ult = (e.ultimateClearsShort ?? []).join(", ");
-  const sav = (e.savageClearsShort ?? []).join(", ");
-  const ultText = ult ? ` 絶: ${ult}` : " 絶: -";
-  const savText = sav ? ` 零式: ${sav}` : " 零式: -";
-  return `${base}${urlText}${ultText}${savText}`;
 }
 
 async function main(): Promise<void> {
@@ -142,7 +103,7 @@ async function main(): Promise<void> {
   }
 
   const targets = Array.from(unique.values());
-  const enriched: LodestoneEnriched[] = [];
+  const enriched: JoinPartyEnriched[] = [];
   if (env.enableLodestone) {
     for (const e of targets) {
       enriched.push(await enrichWithLodestone(e));
@@ -152,8 +113,8 @@ async function main(): Promise<void> {
     enriched.push(...targets.map((event) => ({ event })));
   }
 
-  const lines = enriched.map((e) => `- ${formatEnriched(e)}`);
-  const content = [`パーティ参加ログ（直近${env.lookbackSeconds}s）`, ...lines].join("\n");
+  const text = formatJoinPartyEventsText(enriched);
+  const content = toDiscordCodeBlock(text);
 
   await postDiscordWebhook({
     webhookUrl: env.discordWebhookUrl,
