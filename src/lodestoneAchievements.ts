@@ -19,7 +19,7 @@ export const HIGH_END_ACHIEVEMENTS = [
   { name: "万魔殿の辺獄を完全制覇せし者：ランク1", short: "【パンデモ】辺獄", group: "savage" },
   { name: "万魔殿の煉獄を完全制覇せし者：ランク1", short: "【パンデモ】煉獄", group: "savage" },
   { name: "万魔殿の天獄を完全制覇せし者：ランク1", short: "【パンデモ】天獄", group: "savage" },
-  { name: "アルカディアのライトヘビー級を制覇せし者：ランク1", short: "【アルカディア】ライトヘビー", group: "savage" },
+  { name: "アルカディアのライトヘビー級を完全制覇せし者：ランク1", short: "【アルカディア】ライトヘビー", group: "savage" },
   { name: "アルカディアのクルーザー級を完全制覇せし者：ランク1", short: "【アルカディア】クルーザー", group: "savage" },
   { name: "アルカディアのヘビー級を完全制覇せし者：ランク1", short: "【アルカディア】ヘビー", group: "savage" }
 ] as const;
