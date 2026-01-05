@@ -13,6 +13,9 @@ Discord への通知は `ffxiv_ptfinder` と同様にコードブロック形式
 - `DISCORD_WEBHOOK_URL` (required): Discord の webhook URL
 - `ENABLE_LODESTONE` (optional): default `true`（Lodestone 取得を無効化する場合は `false`）
 - `DEFAULT_WORLD_NAME` (optional): ログにワールド名が含まれない場合の補完（ログ提供者と同一ワールドのケース）
+- `DEDUPE_TABLE_NAME` (optional): DynamoDB重複排除テーブル名（SAMで自動作成・デフォルト有効）
+- `DEDUPE_TTL_SECONDS` (optional): 重複排除TTL（秒）。デフォルト `600`（10分）
+- `ALLOWED_SOURCE_IPS` (optional): 許可する送信元IP（カンマ区切り）。指定時は一致しないリクエストを `403` で拒否
 
 ## Local run（開発用）
 
@@ -39,7 +42,21 @@ sam deploy --guided \
     EnableLodestone='true'
 ```
 
-デプロイ後に出力される `FunctionUrl` を Fluentd 側の `{input_lambda_url}` に設定してください。
+デプロイ後に出力される `Outputs.ApiEndpoint` を Fluentd 側の送信先URLに設定してください。
+
+### API Gateway（HTTP API）
+
+このプロジェクトは API Gateway（HTTP API）経由で Lambda を呼び出します。
+`template.yaml` でスロットリングを `1 rps / burst 2` に設定しています。
+
+### 同時実行について
+
+`template.yaml` では `ReservedConcurrentExecutions: 1` を設定しており、Lambdaの同時実行を1に制限しています。
+これにより、同一タイミングで複数リクエストが来ても処理が直列化され、Lodestone/Discordの並列実行を抑えられます（超過分は 429 でスロットリングされ、送信側のリトライで後追い処理されます）。
+
+### DynamoDB（重複排除）の確認
+
+CloudWatch Logs に `dedupe.result` が出力されます。`accepted` / `duplicate` が期待通りになっているか確認してください。
 
 ### Fluentd config
 

@@ -15,11 +15,45 @@ Parameters:
     Default: "true"
 
 Resources:
+  JoinPartyDedupeTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  JoinPartyHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 1
+        ThrottlingBurstLimit: 2
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - "content-type"
+        AllowMethods:
+          - "POST"
+
   JoinPartyNotifierFunction:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: nodejs20.x
       Architectures: [arm64]
+      # 同時実行を抑止して、同一タイミングの二重処理（Lodestone/Discordの並列）を防ぎます。
+      # 超過分は 429 (TooManyRequests) になり、送信側（Fluentd）のバッファ/リトライで後から処理されます。
+      ReservedConcurrentExecutions: 1
       MemorySize: 256
       Timeout: 30
       Handler: handler.handler
@@ -29,12 +63,20 @@ Resources:
           DISCORD_WEBHOOK_URL: !Ref DiscordWebhookUrl
           DEFAULT_WORLD_NAME: !Ref DefaultWorldName
           ENABLE_LODESTONE: !Ref EnableLodestone
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins: ["*"]
-          AllowHeaders: ["content-type"]
-          AllowMethods: ["POST"]
+          DEDUPE_TABLE_NAME: !Ref JoinPartyDedupeTable
+          DEDUPE_TTL_SECONDS: "600"
+          # API Gateway の sourceIp を許可リストで制限（カンマ区切り対応）
+          ALLOWED_SOURCE_IPS: "61.114.211.222"
+      Events:
+        Ingest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref JoinPartyHttpApi
+            Path: /ingest
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JoinPartyDedupeTable
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -45,7 +87,44 @@ Resources:
         Target: es2022
         Format: cjs
 
+  LogRetentionManagerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs20.x
+      Architectures: [arm64]
+      MemorySize: 128
+      Timeout: 30
+      Handler: logRetention.handler
+      CodeUri: .
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:PutRetentionPolicy
+              Resource: "*"
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/lambda/logRetention.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2022
+        Format: cjs
+
+  JoinPartyLogRetention:
+    Type: Custom::LogRetention
+    Properties:
+      ServiceToken: !GetAtt LogRetentionManagerFunction.Arn
+      LogGroupName: !Sub "/aws/lambda/${JoinPartyNotifierFunction}"
+      RetentionInDays: 3
+
 Outputs:
-  FunctionUrl:
-    Description: "Fluentd output endpoint (Lambda Function URL)"
-    Value: !GetAtt JoinPartyNotifierFunctionUrl.FunctionUrl
+  ApiEndpoint:
+    Description: "Fluentd output endpoint (API Gateway HTTP API)"
+    Value: !Sub "https://${JoinPartyHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod/ingest"
+
+  DedupeTableName:
+    Description: "DynamoDB table name for idempotency (TTL)"
+    Value: !Ref JoinPartyDedupeTable
